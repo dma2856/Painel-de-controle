@@ -21,7 +21,7 @@ body {
 /* CONTAINER PRINCIPAL DO PAINEL */
 header, main {
     width: 100%;
-    max-width: 1000px;
+    max-width: 1100px; /* Um pouquinho mais largo para acomodar bem as edições inline */
 }
 
 /* ==========================================================================
@@ -102,6 +102,7 @@ table {
 th, td {
     padding: 16px 20px;
     border-bottom: 1px solid #29292e;
+    vertical-align: middle; /* Mantém tudo alinhado ao centro verticalmente */
 }
 
 th {
@@ -123,6 +124,28 @@ tr:hover td {
 td {
     color: #c4c4cc;
     font-size: 15px;
+}
+
+/* ==========================================================================
+   INPUTS DE EDIÇÃO INLINE (USUÁRIO E SENHA)
+   ========================================================================== */
+/* Remove o fundo branco padrão dos inputs de texto inseridos na tabela */
+.coluna-usuario input[type="text"],
+.coluna-senha input[type="text"] {
+    background-color: #17171a;
+    border: 1px solid #29292e;
+    color: #e1e1e6;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.coluna-usuario input[type="text"]:focus,
+.coluna-senha input[type="text"]:focus {
+    border-color: #00b37e;
+    box-shadow: 0 0 0 1px #00b37e;
 }
 
 /* ==========================================================================
@@ -150,13 +173,20 @@ td {
 }
 
 /* ==========================================================================
-   BOTÕES DE AÇÃO (DENTRO DA TABELA)
+   BOTÕES DE AÇÃO ESTRUTURADOS
    ========================================================================== */
+/* Alinha os blocos de ações originais e de salvar sem quebrar layout */
+.acoes-padrao, .acoes-salvar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .btn-renovar, .btn-status, .btn-excluir, .btn-editar {
-    padding: 6px 12px;
-    font-size: 14px;
+    padding: 8px 14px;
+    font-size: 13px;
     font-weight: bold;
-    margin-right: 6px;
+    white-space: nowrap; /* Impede o texto de quebrar linha internamente */
 }
 
 .btn-renovar {
@@ -168,9 +198,8 @@ td {
     background-color: #00875f;
 }
 
-/* Botão Editar (Ajustado no mesmo tamanho e padrão do de Bloquear) */
 .btn-editar {
-    background-color: #2980b9; /* Azul moderno */
+    background-color: #2980b9;
     color: #ffffff;
 }
 
@@ -212,7 +241,7 @@ td {
 .inputs-edicao {
     background: #17171a;
     border: 1px solid #29292e;
-    padding: 6px 10px;
+    padding: 4px 8px;
     border-radius: 6px;
     align-items: center;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -248,44 +277,26 @@ td {
     background-color: rgba(0, 179, 126, 0.15);
 }
 
-/* Botões rápidos de ação interna (✔ e ✖) */
-.btn-salvar, .btn-cancelar {
+/* Ajuste fino dos botões inline de Salvar e Cancelar */
+.acoes-salvar button {
+    padding: 8px 14px !important; /* Sobrescreve estilos inline antigos */
+    font-size: 13px !important;
+    font-weight: bold;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    margin-right: 0;
-    margin-left: 4px;
-}
-
-.btn-salvar {
-    background-color: rgba(0, 179, 126, 0.1);
-    color: #00b37e;
-    border: 1px solid rgba(0, 179, 126, 0.2);
-}
-
-.btn-salvar:hover {
-    background-color: #00b37e;
-    color: #ffffff;
-}
-
-.btn-cancelar {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #a8a8b3;
-    border: 1px solid #29292e;
-}
-
-.btn-cancelar:hover {
-    background-color: rgba(247, 90, 90, 0.1);
-    color: #f75a5a;
-    border-color: rgba(247, 90, 90, 0.2);
+    gap: 4px;
+    white-space: nowrap;
 }
 
 /* ==========================================================================
    RESPONSIVIDADE PARA TELAS MENORES
    ========================================================================== */
+@media (max-width: 900px) {
+    .acoes-padrao, .acoes-salvar {
+        flex-wrap: wrap;
+    }
+}
+
 @media (max-width: 768px) {
     header {
         flex-direction: column;
