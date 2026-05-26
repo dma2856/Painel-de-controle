@@ -25,7 +25,7 @@
                 </tr>
             </thead>
             <tbody>
-                </tbody>
+            </tbody>
         </table>
     </main>
 
@@ -55,11 +55,9 @@
             tbody.innerHTML = ""; 
 
             clientes.forEach(cliente => {
-                // Separar data e hora se vier do banco, ou definir padrão
                 let dataIso = cliente.validade; // formato AAAA-MM-DD
                 let dataFormatada = dataIso.split("-").reverse().join("/");
                 
-                // Como sua coluna guarda 'date', vamos definir o horário padrão como 12:00 caso não exista no banco ainda
                 let horarioPadrao = "12:00";
 
                 const statusBadge = cliente.status === 'ativo' ? 'badge ativo' : 'badge bloqueado';
@@ -69,23 +67,37 @@
 
                 const linha = `
                     <tr id="linha-${cliente.id}">
-                        <td>${cliente.usuario}</td>
-                        <td>${cliente.senha}</td>
+                        <td class="coluna-usuario">
+                            <span class="texto-usuario">${cliente.usuario}</span>
+                            <input type="text" class="edit-usuario" value="${cliente.usuario}" style="display: none; width: 90%;">
+                        </td>
+                        
+                        <td class="coluna-senha">
+                            <span class="texto-senha">${cliente.senha}</span>
+                            <input type="text" class="edit-senha" value="${cliente.senha}" style="display: none; width: 90%;">
+                        </td>
+
                         <td class="coluna-validade">
                             <span class="texto-validade">${dataFormatada} às ${horarioPadrao}</span>
                             <div class="inputs-edicao" style="display: none; gap: 5px;">
                                 <input type="date" class="edit-data" value="${dataIso}">
                                 <input type="time" class="edit-hora" value="${horarioPadrao}">
-                                <button class="btn-salvar" onclick="salvarEdicao(${cliente.id})">✔</button>
-                                <button class="btn-cancelar" onclick="cancelarEdicao(${cliente.id})">✖</button>
                             </div>
                         </td>
+
                         <td><span class="${statusBadge}">${cliente.status.toUpperCase()}</span></td>
+                        
                         <td>
-                            <button class="btn-renovar" onclick="renovarUsuario(${cliente.id}, '${cliente.validade}')">Renovar +30 dias</button>
-                            <button class="btn-editar" onclick="mostrarPainelEdicao(${cliente.id})">Editar</button>
-                            <button class="${statusClasseBtn}" onclick="alterarStatus(${cliente.id}, '${proximaAcao}')">${statusTextoBtn}</button>
-                            <button class="btn-excluir" onclick="excluirUsuario(${cliente.id})">Excluir</button>
+                            <div class="acoes-padrao">
+                                <button class="btn-renovar" onclick="renovarUsuario(${cliente.id}, '${cliente.validade}')">Renovar +30 dias</button>
+                                <button class="btn-editar" onclick="mostrarPainelEdicao(${cliente.id})">Editar</button>
+                                <button class="${statusClasseBtn}" onclick="alterarStatus(${cliente.id}, '${proximaAcao}')">${statusTextoBtn}</button>
+                                <button class="btn-excluir" onclick="excluirUsuario(${cliente.id})">Excluir</button>
+                            </div>
+                            <div class="acoes-salvar" style="display: none; gap: 5px;">
+                                <button class="btn-salvar" onclick="salvarEdicao(${cliente.id})" style="background-color: #00b37e; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">✔ Salvar</button>
+                                <button class="btn-cancelar" onclick="cancelarEdicao(${cliente.id})" style="background-color: #f75a5a; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">✖ Cancelar</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -93,40 +105,71 @@
             });
         }
 
-        // FUNÇÃO PARA MOSTRAR OS CAMPOS DE EDIÇÃO DE DATA/HORA
+        // FUNÇÃO PARA MOSTRAR OS CAMPOS DE EDIÇÃO (USUÁRIO, SENHA E DATA)
         function mostrarPainelEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
+            
+            // Esconde os textos fixos
+            linha.querySelector('.texto-usuario').style.display = 'none';
+            linha.querySelector('.texto-senha').style.display = 'none';
             linha.querySelector('.texto-validade').style.display = 'none';
+            linha.querySelector('.acoes-padrao').style.display = 'none';
+
+            // Mostra os inputs de edição
+            linha.querySelector('.edit-usuario').style.display = 'inline-block';
+            linha.querySelector('.edit-senha').style.display = 'inline-block';
             linha.querySelector('.inputs-edicao').style.display = 'flex';
+            linha.querySelector('.acoes-salvar').style.display = 'flex';
         }
 
         // FUNÇÃO PARA CANCELAR A EDIÇÃO
         function cancelarEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
+            
+            // Mostra os textos fixos de volta
+            linha.querySelector('.texto-usuario').style.display = 'inline';
+            linha.querySelector('.texto-senha').style.display = 'inline';
             linha.querySelector('.texto-validade').style.display = 'inline';
+            linha.querySelector('.acoes-padrao').style.display = 'block';
+
+            // Esconde os inputs de edição
+            linha.querySelector('.edit-usuario').style.display = 'none';
+            linha.querySelector('.edit-senha').style.display = 'none';
             linha.querySelector('.inputs-edicao').style.display = 'none';
+            linha.querySelector('.acoes-salvar').style.display = 'none';
         }
 
-        // FUNÇÃO PARA SALVAR A NOVA DATA NO SUPABASE
+        // FUNÇÃO PARA SALVAR AS MODIFICAÇÕES (USUÁRIO, SENHA E DATA) NO SUPABASE
         async function salvarEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
+            
+            const novoUsuario = linha.querySelector('.edit-usuario').value.trim();
+            const novaSenha = linha.querySelector('.edit-senha').value.trim();
             const novaData = linha.querySelector('.edit-data').value;
-            const novaHora = linha.querySelector('.edit-hora').value; // Você pode usar para logs ou regras internas se quiser
 
-            if (!novaData) {
-                alert("Por favor, selecione uma data válida.");
+            if (!novoUsuario || !novaSenha || !novaData) {
+                alert("Por favor, preencha todos os campos corretamente.");
                 return;
             }
 
+            // Atualiza tudo de uma vez só no banco de dados usando o método PATCH interno do SDK
             const { error } = await supabaseClient
                 .from('clientes')
-                .update({ validade: novaData }) // Atualiza a coluna de validade no banco
+                .update({ 
+                    usuario: novoUsuario, 
+                    senha: novaSenha, 
+                    validade: novaData 
+                }) 
                 .eq('id', id);
 
             if (error) {
-                alert("Erro ao salvar alterações: " + error.message);
+                if (error.message.includes("unique")) {
+                    alert("Erro: Esse nome de usuário já está sendo usado por outra pessoa.");
+                } else {
+                    alert("Erro ao salvar alterações: " + error.message);
+                }
             } else {
-                alert("Validade atualizada com sucesso!");
+                alert("Dados atualizados com sucesso!");
                 carregarClientes();
             }
         }
@@ -136,8 +179,12 @@
             const usuario = prompt("Digite o nome de usuário (login):");
             if (!usuario) return;
 
+            const updateUsuario = usuario.trim();
+
             const senha = prompt("Digite a senha:");
             if (!senha) return;
+
+            const updateSenha = senha.trim();
 
             let data = new Date();
             data.setDate(data.getDate() + 30);
@@ -146,7 +193,7 @@
             const { error } = await supabaseClient
                 .from('clientes')
                 .insert([
-                    { usuario: usuario, senha: senha, validade: validadeInicial, status: 'ativo' }
+                    { usuario: updateUsuario, senha: updateSenha, validade: validadeInicial, status: 'ativo' }
                 ]);
 
             if (error) {
