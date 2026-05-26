@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Admin - Controle de Clientes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h2>Meu Painel Admin</h2>
+        <p>Seus Créditos: <strong>Infinitos</strong></p>
+        <button class="btn-novo">+ Criar Novo Usuário</button>
+    </header>
+
+    <main>
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>Senha</th>
+                    <th>Validade</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </main>
+
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+       // Configurações do seu Supabase
+        const SUPABASE_URL = "https://djcvxbpfwmpvaewljarz.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_U4kZxWPScx7VwGQsfI_i9w_Axuls7kx"; 
+
+        // Inicializa a conexão
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 1. FUNÇÃO PARA CARREGAR OS CLIENTES NA TABELA
+        async function carregarClientes() {
+            const { data: clientes, error } = await supabaseClient
+                .from('clientes')
+                .select('*')
+                .order('id', { ascending: true });
+
+            if (error) {
+                console.error("Erro ao buscar clientes:", error);
+                return;
+            }
+
+            const tbody = document.querySelector("table tbody");
+            tbody.innerHTML = ""; 
+
+            clientes.forEach(cliente => {
+                // Separar data e hora se vier do banco, ou definir padrão
+                let dataIso = cliente.validade; // formato AAAA-MM-DD
+                let dataFormatada = dataIso.split("-").reverse().join("/");
+                
+                // Como sua coluna guarda 'date', vamos definir o horário padrão como 12:00 caso não exista no banco ainda
+                let horarioPadrao = "12:00";
+
+                const statusBadge = cliente.status === 'ativo' ? 'badge ativo' : 'badge bloqueado';
+                const statusTextoBtn = cliente.status === 'ativo' ? 'Bloquear' : 'Desbloquear';
+                const statusClasseBtn = cliente.status === 'ativo' ? 'btn-status btn-bloquear' : 'btn-status btn-desbloquear';
+                const proximaAcao = cliente.status === 'ativo' ? 'bloquear' : 'desbloquear';
+
+                const linha = `
+                    <tr id="linha-${cliente.id}">
+                        <td>${cliente.usuario}</td>
+                        <td>${cliente.senha}</td>
+                        <td class="coluna-validade">
+                            <span class="texto-validade">${dataFormatada} às ${horarioPadrao}</span>
+                            <div class="inputs-edicao" style="display: none; gap: 5px;">
+                                <input type="date" class="edit-data" value="${dataIso}">
+                                <input type="time" class="edit-hora" value="${horarioPadrao}">
+                                <button class="btn-salvar" onclick="salvarEdicao(${cliente.id})">✔</button>
+                                <button class="btn-cancelar" onclick="cancelarEdicao(${cliente.id})">✖</button>
+                            </div>
+                        </td>
+                        <td><span class="${statusBadge}">${cliente.status.toUpperCase()}</span></td>
+                        <td>
+                            <button class="btn-renovar" onclick="renovarUsuario(${cliente.id}, '${cliente.validade}')">Renovar +30 dias</button>
+                            <button class="btn-editar" onclick="mostrarPainelEdicao(${cliente.id})">Editar</button>
+                            <button class="${statusClasseBtn}" onclick="alterarStatus(${cliente.id}, '${proximaAcao}')">${statusTextoBtn}</button>
+                            <button class="btn-excluir" onclick="excluirUsuario(${cliente.id})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += linha;
+            });
+        }
+
+        // FUNÇÃO PARA MOSTRAR OS CAMPOS DE EDIÇÃO DE DATA/HORA
+        function mostrarPainelEdicao(id) {
+            const linha = document.getElementById(`linha-${id}`);
+            linha.querySelector('.texto-validade').style.display = 'none';
+            linha.querySelector('.inputs-edicao').style.display = 'flex';
+        }
+
+        // FUNÇÃO PARA CANCELAR A EDIÇÃO
+        function cancelarEdicao(id) {
+            const linha = document.getElementById(`linha-${id}`);
+            linha.querySelector('.texto-validade').style.display = 'inline';
+            linha.querySelector('.inputs-edicao').style.display = 'none';
+        }
+
+        // FUNÇÃO PARA SALVAR A NOVA DATA NO SUPABASE
+        async function salvarEdicao(id) {
+            const linha = document.getElementById(`linha-${id}`);
+            const novaData = linha.querySelector('.edit-data').value;
+            const novaHora = linha.querySelector('.edit-hora').value; // Você pode usar para logs ou regras internas se quiser
+
+            if (!novaData) {
+                alert("Por favor, selecione uma data válida.");
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('clientes')
+                .update({ validade: novaData }) // Atualiza a coluna de validade no banco
+                .eq('id', id);
+
+            if (error) {
+                alert("Erro ao salvar alterações: " + error.message);
+            } else {
+                alert("Validade atualizada com sucesso!");
+                carregarClientes();
+            }
+        }
+
+        // 2. FUNÇÃO PARA CRIAR UM NOVO USUÁRIO
+        document.querySelector(".btn-novo").addEventListener("click", async () => {
+            const usuario = prompt("Digite o nome de usuário (login):");
+            if (!usuario) return;
+
+            const senha = prompt("Digite a senha:");
+            if (!senha) return;
+
+            let data = new Date();
+            data.setDate(data.getDate() + 30);
+            const validadeInicial = data.toISOString().split('T')[0];
+
+            const { error } = await supabaseClient
+                .from('clientes')
+                .insert([
+                    { usuario: usuario, senha: senha, validade: validadeInicial, status: 'ativo' }
+                ]);
+
+            if (error) {
+                if (error.message.includes("unique")) {
+                    alert("Esse usuário já existe! Escolha outro nome.");
+                } else {
+                    alert("Erro ao criar usuário: " + error.message);
+                }
+            } else {
+                alert("Usuário criado com sucesso!");
+                carregarClientes();
+            }
+        });
+
+        // 3. FUNÇÃO PARA ALTERAR STATUS (BLOQUEAR/DESBLOQUEAR)
+        async function alterarStatus(id, acao) {
+            const novoStatus = acao === 'bloquear' ? 'bloqueado' : 'ativo';
+            
+            if (confirm(`Tem certeza que deseja ${acao} este usuário?`)) {
+                const { error } = await supabaseClient
+                    .from('clientes')
+                    .update({ status: novoStatus })
+                    .eq('id', id);
+
+                if (error) {
+                    alert("Erro ao alterar status: " + error.message);
+                } else {
+                    carregarClientes();
+                }
+            }
+        }
+
+        // 4. FUNÇÃO PARA EXCLUIR USUÁRIO
+        async function excluirUsuario(id) {
+            if (confirm("Tem certeza absoluta que deseja EXCLUIR este usuário?")) {
+                const { error } = await supabaseClient
+                    .from('clientes')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) {
+                    alert("Erro ao excluir: " + error.message);
+                } else {
+                    carregarClientes();
+                }
+            }
+        }
+
+        // 5. FUNÇÃO PARA RENOVAR VALIDADE (+30 DIAS)
+        async function renovarUsuario(id, validadeAtual) {
+            if (confirm("Deseja adicionar +30 dias de validade para este usuário?")) {
+                let data = new Date(validadeAtual + "T00:00:00");
+                data.setDate(data.getDate() + 30);
+                const novaValidade = data.toISOString().split('T')[0];
+
+                const { error } = await supabaseClient
+                    .from('clientes')
+                    .update({ validade: novaValidade })
+                    .eq('id', id);
+
+                if (error) {
+                    alert("Erro ao renovar: " + error.message);
+                } else {
+                    carregarClientes();
+                }
+            }
+        }
+
+        // Executa a busca assim que o painel abre
+        carregarClientes();
+    </script>
+    
+</body>
+</html>

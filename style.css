@@ -1,0 +1,303 @@
+/* ==========================================================================
+   CONFIGURAÇÕES GERAIS E RESETS
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #121214;
+    color: #e1e1e6;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* CONTAINER PRINCIPAL DO PAINEL */
+header, main {
+    width: 100%;
+    max-width: 1000px;
+}
+
+/* ==========================================================================
+   CABEÇALHO (HEADER)
+   ========================================================================== */
+header {
+    background-color: #1e1e24;
+    border: 1px solid #29292e;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+header h2 {
+    color: #00b37e; /* Verde estilo Supabase */
+    font-size: 24px;
+    font-weight: 600;
+}
+
+header p {
+    color: #a8a8b3;
+    font-size: 16px;
+}
+
+header strong {
+    color: #00b37e;
+    background-color: rgba(0, 179, 126, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   BOTÕES PRINCIPAIS
+   ========================================================================== */
+button {
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-novo {
+    background-color: #00b37e;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 5px;
+}
+
+.btn-novo:hover {
+    background-color: #00875f;
+    transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   TABELA DE CLIENTES
+   ========================================================================== */
+main {
+    background-color: #1e1e24;
+    border: 1px solid #29292e;
+    border-radius: 8px;
+    overflow: hidden; /* Garante as bordas arredondadas */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+th, td {
+    padding: 16px 20px;
+    border-bottom: 1px solid #29292e;
+}
+
+th {
+    background-color: #17171a;
+    color: #e1e1e6;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover td {
+    background-color: #22222a; /* Efeito hover na linha */
+}
+
+td {
+    color: #c4c4cc;
+    font-size: 15px;
+}
+
+/* ==========================================================================
+   BADGES DE STATUS (ATIVO / BLOQUEADO)
+   ========================================================================== */
+.badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.badge.ativo {
+    background-color: rgba(0, 179, 126, 0.1);
+    color: #00b37e;
+    border: 1px solid rgba(0, 179, 126, 0.2);
+}
+
+.badge.bloqueado {
+    background-color: rgba(247, 90, 90, 0.1);
+    color: #f75a5a;
+    border: 1px solid rgba(247, 90, 90, 0.2);
+}
+
+/* ==========================================================================
+   BOTÕES DE AÇÃO (DENTRO DA TABELA)
+   ========================================================================== */
+.btn-renovar, .btn-status, .btn-excluir, .btn-editar {
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    margin-right: 6px;
+}
+
+.btn-renovar {
+    background-color: #00b37e;
+    color: #ffffff;
+}
+
+.btn-renovar:hover {
+    background-color: #00875f;
+}
+
+/* Botão Editar (Ajustado no mesmo tamanho e padrão do de Bloquear) */
+.btn-editar {
+    background-color: #2980b9; /* Azul moderno */
+    color: #ffffff;
+}
+
+.btn-editar:hover {
+    background-color: #3498db;
+}
+
+.btn-bloquear {
+    background-color: #e74c3c;
+    color: #ffffff;
+}
+
+.btn-bloquear:hover {
+    background-color: #c0392b;
+}
+
+.btn-desbloquear {
+    background-color: #f39c12;
+    color: #ffffff;
+}
+
+.btn-desbloquear:hover {
+    background-color: #d35400;
+}
+
+.btn-excluir {
+    background-color: #4e4e54;
+    color: #e1e1e6;
+}
+
+.btn-excluir:hover {
+    background-color: #f75a5a;
+    color: #ffffff;
+}
+
+/* ==========================================================================
+   PAINEL INTERNO DE EDIÇÃO DE DATA E HORÁRIO
+   ========================================================================== */
+.inputs-edicao {
+    background: #17171a;
+    border: 1px solid #29292e;
+    padding: 6px 10px;
+    border-radius: 6px;
+    align-items: center;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.inputs-edicao input[type="date"],
+.inputs-edicao input[type="time"] {
+    background-color: #202024;
+    border: 1px solid #29292e;
+    color: #e1e1e6;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.inputs-edicao input:focus {
+    border-color: #00b37e;
+    box-shadow: 0 0 0 1px #00b37e;
+}
+
+/* Deixa os ícones de calendário e relógio verdes */
+.inputs-edicao input::-webkit-calendar-picker-indicator {
+    filter: invert(53%) sepia(85%) saturate(415%) hue-rotate(115%) brightness(95%) contrast(101%);
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 2px;
+}
+
+.inputs-edicao input::-webkit-calendar-picker-indicator:hover {
+    background-color: rgba(0, 179, 126, 0.15);
+}
+
+/* Botões rápidos de ação interna (✔ e ✖) */
+.btn-salvar, .btn-cancelar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    margin-right: 0;
+    margin-left: 4px;
+}
+
+.btn-salvar {
+    background-color: rgba(0, 179, 126, 0.1);
+    color: #00b37e;
+    border: 1px solid rgba(0, 179, 126, 0.2);
+}
+
+.btn-salvar:hover {
+    background-color: #00b37e;
+    color: #ffffff;
+}
+
+.btn-cancelar {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #a8a8b3;
+    border: 1px solid #29292e;
+}
+
+.btn-cancelar:hover {
+    background-color: rgba(247, 90, 90, 0.1);
+    color: #f75a5a;
+    border-color: rgba(247, 90, 90, 0.2);
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE PARA TELAS MENORES
+   ========================================================================== */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    th, td {
+        padding: 12px;
+    }
+    
+    button, .btn-renovar, .btn-status, .btn-excluir, .btn-editar {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
