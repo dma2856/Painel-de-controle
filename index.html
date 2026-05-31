@@ -33,15 +33,65 @@
    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-       // Configurações do seu Supabase
         const SUPABASE_URL = "https://djcvxbpfwmpvaewljarz.supabase.co";
         const SUPABASE_KEY = "sb_publishable_U4kZxWPScx7VwGQsfI_i9w_Axuls7kx"; 
 
-        // Inicializa a conexão
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 1. FUNÇÃO PARA CARREGAR OS CLIENTES NA TABELA
+        // Gera uma string comparável com a data+hora atual no fuso do Brasil (Brasília)
+        function obterDataHoraAtualBr() {
+            const agora = new Date();
+            // Deslocamento manual de fuso horário para o Brasil (UTC-3)
+            const deslocamento = 3 * 60 * 60 * 1000; 
+            const dataBr = new Date(agora.getTime() - deslocamento);
+            return dataBr.toISOString().replace("Z", "");
+        }
+
+        // Trava automática para usuários vencidos baseada no fuso BR
+        async function verificarEBloquearExpirados() {
+            try {
+                // Pega os dados apenas dos usuários ativos
+                const { data: clientes, error } = await supabaseClient
+                    .from('clientes')
+                    .select('id, validade')
+                    .eq('status', 'ativo');
+
+                if (error) throw error;
+
+                const agoraCompleto = obterDataHoraAtualBr(); // Formato: AAAA-MM-DDTHH:MM...
+                const idsParaBloquear = [];
+
+                clientes.forEach(cliente => {
+                    let dataParte = cliente.validade; // Ex: "2026-05-31"
+                    let horaParte = localStorage.getItem(`hora_cliente_${cliente.id}`) || "12:00";
+                    
+                    // Monta a linha do tempo exata do vencimento deste cliente
+                    const validadeCompletaCliente = `${dataParte}T${horaParte}:00.000`;
+
+                    // Se o momento atual passou da validade montada, adiciona na lista de bloqueio
+                    if (agoraCompleto >= validadeCompletaCliente) {
+                        idsParaBloquear.push(cliente.id);
+                    }
+                });
+
+                // Executa o bloqueio em lote no Supabase
+                if (idsParaBloquear.length > 0) {
+                    await supabaseClient
+                        .from('clientes')
+                        .update({ status: 'bloqueado' })
+                        .in('id', idsParaBloquear);
+                    console.log(`${idsParaBloquear.length} clientes expirados foram bloqueados automaticamente.`);
+                }
+            } catch (err) {
+                console.error("Erro na verificação de vencidos:", err);
+            }
+        }
+
+        // CARREGAR CLIENTES NA TABELA
         async function carregarClientes() {
+            // Roda a trava de segurança antes de desenhar os componentes na tela
+            await verificarEBloquearExpirados();
+
             const { data: clientes, error } = await supabaseClient
                 .from('clientes')
                 .select('*')
@@ -56,12 +106,11 @@
             tbody.innerHTML = ""; 
 
             clientes.forEach(cliente => {
-                let dataIso = cliente.validade; // formato AAAA-MM-DD
-                let dataFormatada = dataIso.split("-").reverse().join("/");
-                
-                let horarioPadrao = "12:00";
-                // Garante que exiba 1 caso a coluna venha vazia no banco
-                let limiteDisp = cliente.limite_dispositivos !== undefined && cliente.limite_dispositivos !== null ? cliente.limite_dispositivos : 1;
+                let dataParte = cliente.validade; 
+                let horaParte = localStorage.getItem(`hora_cliente_${cliente.id}`) || "12:00";
+
+                let dataFormatada = dataParte.split("-").reverse().join("/");
+                let limiteDisp = cliente.limite_dispositivos ?? 1;
 
                 const statusBadge = cliente.status === 'ativo' ? 'badge ativo' : 'badge bloqueado';
                 const statusTextoBtn = cliente.status === 'ativo' ? 'Bloquear' : 'Desbloquear';
@@ -81,10 +130,10 @@
                         </td>
 
                         <td class="coluna-validade">
-                            <span class="texto-validade">${dataFormatada} às ${horarioPadrao}</span>
+                            <span class="texto-validade">${dataFormatada} às ${horaParte}</span>
                             <div class="inputs-edicao" style="display: none; gap: 5px;">
-                                <input type="date" class="edit-data" value="${dataIso}">
-                                <input type="time" class="edit-hora" value="${horarioPadrao}">
+                                <input type="date" class="edit-data" value="${dataParte}">
+                                <input type="time" class="edit-hora" value="${horaParte}">
                             </div>
                         </td>
 
@@ -113,18 +162,14 @@
             });
         }
 
-        // FUNÇÃO PARA MOSTRAR OS CAMPOS DE EDIÇÃO (USUÁRIO, SENHA, DATA E LIMITE)
         function mostrarPainelEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
-            
-            // Esconde os textos fixos
             linha.querySelector('.texto-usuario').style.display = 'none';
             linha.querySelector('.texto-senha').style.display = 'none';
             linha.querySelector('.texto-validade').style.display = 'none';
             linha.querySelector('.texto-limite').style.display = 'none';
             linha.querySelector('.acoes-padrao').style.display = 'none';
 
-            // Mostra os inputs de edição
             linha.querySelector('.edit-usuario').style.display = 'inline-block';
             linha.querySelector('.edit-senha').style.display = 'inline-block';
             linha.querySelector('.inputs-edicao').style.display = 'flex';
@@ -132,32 +177,29 @@
             linha.querySelector('.acoes-salvar').style.display = 'flex';
         }
 
-        // FUNÇÃO PARA CANCELAR A EDIÇÃO
         function cancelarEdicao(id) {
-            const linha = document.getElementById(`linha-${id}`);
-            
-            // Mostra os textos fixos de volta
-            linha.querySelector('.texto-usuario').style.display = 'inline';
-            linha.querySelector('.texto-senha').style.display = 'inline';
-            linha.querySelector('.texto-validade').style.display = 'inline';
-            linha.querySelector('.texto-limite').style.display = 'inline';
-            linha.querySelector('.acoes-padrao').style.display = 'block';
+            const deleteLinha = document.getElementById(`linha-${id}`);
+            deleteLinha.querySelector('.texto-usuario').style.display = 'inline';
+            deleteLinha.querySelector('.texto-senha').style.display = 'inline';
+            deleteLinha.querySelector('.texto-validade').style.display = 'inline';
+            deleteLinha.querySelector('.texto-limite').style.display = 'inline';
+            deleteLinha.querySelector('.acoes-padrao').style.display = 'block';
 
-            // Esconde os inputs de edição
-            linha.querySelector('.edit-usuario').style.display = 'none';
-            linha.querySelector('.edit-senha').style.display = 'none';
-            linha.querySelector('.inputs-edicao').style.display = 'none';
-            linha.querySelector('.edit-limite').style.display = 'none';
-            linha.querySelector('.acoes-salvar').style.display = 'none';
+            deleteLinha.querySelector('.edit-usuario').style.display = 'none';
+            deleteLinha.querySelector('.edit-senha').style.display = 'none';
+            deleteLinha.querySelector('.inputs-edicao').style.display = 'none';
+            deleteLinha.querySelector('.edit-limite').style.display = 'none';
+            deleteLinha.querySelector('.acoes-salvar').style.display = 'none';
         }
 
-        // FUNÇÃO PARA SALVAR AS MODIFICAÇÕES NO SUPABASE
+        // SALVAR EDIÇÃO (MUDANÇA FIXA NA STR DA LINHA)
         async function salvarEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
             
             const novoUsuario = linha.querySelector('.edit-usuario').value.trim();
-            const novaSenha = linha.querySelector('.edit-senha').value.trim();
+            const novaSenha = inline = linha.querySelector('.edit-senha').value.trim();
             const novaData = linha.querySelector('.edit-data').value;
+            const novaHora = linha.querySelector('.edit-hora').value || "12:00"; 
             const novoLimite = parseInt(linha.querySelector('.edit-limite').value) || 1;
 
             if (!novoUsuario || !novaSenha || !novaData) {
@@ -165,89 +207,83 @@
                 return;
             }
 
-            // Atualiza no banco de dados incluindo a nova coluna limite_dispositivos
+            // Persiste a hora localmente no navegador vinculada ao id do cliente
+            localStorage.setItem(`hora_cliente_${id}`, novaHora);
+
             const { error } = await supabaseClient
                 .from('clientes')
                 .update({ 
                     usuario: novoUsuario, 
                     senha: novaSenha, 
-                    validade: novaData,
-                    limite_dispositivos: novoLimite
+                    validade: novaData, // Envia o padrão aceito pelo tipo DATE (AAAA-MM-DD)
+                    limite_dispositivos: novoLimite,
+                    status: 'ativo' // Garante voltar ativo se você moveu a validade para o futuro
                 }) 
                 .eq('id', id);
 
             if (error) {
-                if (error.message.includes("unique")) {
-                    alert("Erro: Esse nome de usuário já está sendo usado por outra pessoa.");
-                } else {
-                    alert("Erro ao salvar alterações: " + error.message);
-                }
+                alert("Erro ao salvar alterações: " + error.message);
             } else {
                 alert("Dados atualizados com sucesso!");
                 carregarClientes();
             }
         }
 
-        // 2. FUNÇÃO PARA CRIAR UM NOVO USUÁRIO
+        // CRIAR NOVO USUÁRIO
         document.querySelector(".btn-novo").addEventListener("click", async () => {
             const usuario = prompt("Digite o nome de usuário (login):");
             if (!usuario) return;
             const updateUsuario = usuario.trim();
 
-            const senha = prompt("Digite a senha:");
-            if (!senha) return;
-            const updateSenha = senha.trim();
+            const MapSenha = prompt("Digite a senha:");
+            if (!MapSenha) return;
+            const updateSenha = MapSenha.trim();
 
             const limiteInput = prompt("Digite o limite de conexões/dispositivos (Padrão é 1):", "1");
             const limiteDispositivos = parseInt(limiteInput) || 1;
 
             let data = new Date();
             data.setDate(data.getDate() + 30);
-            const validadeInicial = data.toISOString().split('T')[0];
+            const dataIso = data.toISOString().split('T')[0];
 
-            const { error } = await supabaseClient
+            const { data: novoCliente, error } = await supabaseClient
                 .from('clientes')
                 .insert([
                     { 
                         usuario: updateUsuario, 
                         senha: updateSenha, 
-                        validade: validadeInicial, 
+                        validade: dataIso, 
                         status: 'ativo',
                         limite_dispositivos: limiteDispositivos
                     }
-                ]);
+                ]).select();
 
             if (error) {
-                if (error.message.includes("unique")) {
-                    alert("Esse usuário já existe! Escolha outro nome.");
-                } else {
-                    alert("Erro ao criar usuário: " + error.message);
-                }
+                alert("Erro ao criar usuário: " + error.message);
             } else {
+                if(novoCliente && novoCliente[0]) {
+                    localStorage.setItem(`hora_cliente_${novoCliente[0].id}`, "23:59");
+                }
                 alert("Usuário criado com sucesso!");
                 carregarClientes();
             }
         });
 
-        // 3. FUNÇÃO PARA ALTERAR STATUS (BLOQUEAR/DESBLOQUEAR)
+        // MANIPULAR STATUS MANUALMENTE
         async function alterarStatus(id, acao) {
             const novoStatus = acao === 'bloquear' ? 'bloqueado' : 'ativo';
-            
             if (confirm(`Tem certeza que deseja ${acao} este usuário?`)) {
                 const { error } = await supabaseClient
                     .from('clientes')
                     .update({ status: novoStatus })
                     .eq('id', id);
 
-                if (error) {
-                    alert("Erro ao alterar status: " + error.message);
-                } else {
-                    carregarClientes();
-                }
+                if (error) alert("Erro ao alterar status: " + error.message);
+                else carregarClientes();
             }
         }
 
-        // 4. FUNÇÃO PARA EXCLUIR USUÁRIO
+        // DELETAR USUÁRIO
         async function excluirUsuario(id) {
             if (confirm("Tem certeza absoluta que deseja EXCLUIR este usuário?")) {
                 const { error } = await supabaseClient
@@ -255,37 +291,41 @@
                     .delete()
                     .eq('id', id);
 
-                if (error) {
-                    alert("Erro ao excluir: " + error.message);
-                } else {
+                if (error) alert("Erro ao excluir: " + error.message);
+                else {
+                    localStorage.removeItem(`hora_cliente_${id}`);
                     carregarClientes();
                 }
             }
         }
 
-        // 5. FUNÇÃO PARA RENOVAR VALIDADE (+30 DIAS)
+        // RENOVAÇÃO RÁPIDA (+30 DIAS)
         async function renovarUsuario(id, validadeAtual) {
             if (confirm("Deseja adicionar +30 dias de validade para este usuário?")) {
                 let data = new Date(validadeAtual + "T00:00:00");
                 data.setDate(data.getDate() + 30);
-                const novaValidade = data.toISOString().split('T')[0];
+                
+                const novaDataIso = data.toISOString().split('T')[0];
 
                 const { error } = await supabaseClient
                     .from('clientes')
-                    .update({ validade: novaValidade })
+                    .update({ 
+                        validade: novaDataIso,
+                        status: 'ativo'
+                    })
                     .eq('id', id);
 
                 if (error) {
                     alert("Erro ao renovar: " + error.message);
                 } else {
+                    alert("Usuário renovado com sucesso!");
                     carregarClientes();
                 }
             }
         }
 
-        // Executa a busca assim que o painel abre
+        // Inicializa puxando a lista atualizada
         carregarClientes();
     </script>
-    
 </body>
 </html>
