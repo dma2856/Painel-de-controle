@@ -20,6 +20,7 @@
                     <th>Usuário</th>
                     <th>Senha</th>
                     <th>Validade</th>
+                    <th>Limite Dispositivos</th>
                     <th>Status</th>
                     <th>Ações</th>
                 </tr>
@@ -59,6 +60,8 @@
                 let dataFormatada = dataIso.split("-").reverse().join("/");
                 
                 let horarioPadrao = "12:00";
+                // Garante que exiba 1 caso a coluna venha vazia no banco
+                let limiteDisp = cliente.limite_dispositivos !== undefined && cliente.limite_dispositivos !== null ? cliente.limite_dispositivos : 1;
 
                 const statusBadge = cliente.status === 'ativo' ? 'badge ativo' : 'badge bloqueado';
                 const statusTextoBtn = cliente.status === 'ativo' ? 'Bloquear' : 'Desbloquear';
@@ -85,6 +88,11 @@
                             </div>
                         </td>
 
+                        <td class="coluna-limite">
+                            <span class="texto-limite">${limiteDisp}</span>
+                            <input type="number" class="edit-limite" value="${limiteDisp}" min="1" style="display: none; width: 60px;">
+                        </td>
+
                         <td><span class="${statusBadge}">${cliente.status.toUpperCase()}</span></td>
                         
                         <td>
@@ -105,7 +113,7 @@
             });
         }
 
-        // FUNÇÃO PARA MOSTRAR OS CAMPOS DE EDIÇÃO (USUÁRIO, SENHA E DATA)
+        // FUNÇÃO PARA MOSTRAR OS CAMPOS DE EDIÇÃO (USUÁRIO, SENHA, DATA E LIMITE)
         function mostrarPainelEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
             
@@ -113,12 +121,14 @@
             linha.querySelector('.texto-usuario').style.display = 'none';
             linha.querySelector('.texto-senha').style.display = 'none';
             linha.querySelector('.texto-validade').style.display = 'none';
+            linha.querySelector('.texto-limite').style.display = 'none';
             linha.querySelector('.acoes-padrao').style.display = 'none';
 
             // Mostra os inputs de edição
             linha.querySelector('.edit-usuario').style.display = 'inline-block';
             linha.querySelector('.edit-senha').style.display = 'inline-block';
             linha.querySelector('.inputs-edicao').style.display = 'flex';
+            linha.querySelector('.edit-limite').style.display = 'inline-block';
             linha.querySelector('.acoes-salvar').style.display = 'flex';
         }
 
@@ -130,35 +140,39 @@
             linha.querySelector('.texto-usuario').style.display = 'inline';
             linha.querySelector('.texto-senha').style.display = 'inline';
             linha.querySelector('.texto-validade').style.display = 'inline';
+            linha.querySelector('.texto-limite').style.display = 'inline';
             linha.querySelector('.acoes-padrao').style.display = 'block';
 
             // Esconde os inputs de edição
             linha.querySelector('.edit-usuario').style.display = 'none';
             linha.querySelector('.edit-senha').style.display = 'none';
             linha.querySelector('.inputs-edicao').style.display = 'none';
+            linha.querySelector('.edit-limite').style.display = 'none';
             linha.querySelector('.acoes-salvar').style.display = 'none';
         }
 
-        // FUNÇÃO PARA SALVAR AS MODIFICAÇÕES (USUÁRIO, SENHA E DATA) NO SUPABASE
+        // FUNÇÃO PARA SALVAR AS MODIFICAÇÕES NO SUPABASE
         async function salvarEdicao(id) {
             const linha = document.getElementById(`linha-${id}`);
             
             const novoUsuario = linha.querySelector('.edit-usuario').value.trim();
             const novaSenha = linha.querySelector('.edit-senha').value.trim();
             const novaData = linha.querySelector('.edit-data').value;
+            const novoLimite = parseInt(linha.querySelector('.edit-limite').value) || 1;
 
             if (!novoUsuario || !novaSenha || !novaData) {
                 alert("Por favor, preencha todos os campos corretamente.");
                 return;
             }
 
-            // Atualiza tudo de uma vez só no banco de dados usando o método PATCH interno do SDK
+            // Atualiza no banco de dados incluindo a nova coluna limite_dispositivos
             const { error } = await supabaseClient
                 .from('clientes')
                 .update({ 
                     usuario: novoUsuario, 
                     senha: novaSenha, 
-                    validade: novaData 
+                    validade: novaData,
+                    limite_dispositivos: novoLimite
                 }) 
                 .eq('id', id);
 
@@ -178,13 +192,14 @@
         document.querySelector(".btn-novo").addEventListener("click", async () => {
             const usuario = prompt("Digite o nome de usuário (login):");
             if (!usuario) return;
-
             const updateUsuario = usuario.trim();
 
             const senha = prompt("Digite a senha:");
             if (!senha) return;
-
             const updateSenha = senha.trim();
+
+            const limiteInput = prompt("Digite o limite de conexões/dispositivos (Padrão é 1):", "1");
+            const limiteDispositivos = parseInt(limiteInput) || 1;
 
             let data = new Date();
             data.setDate(data.getDate() + 30);
@@ -193,7 +208,13 @@
             const { error } = await supabaseClient
                 .from('clientes')
                 .insert([
-                    { usuario: updateUsuario, senha: updateSenha, validade: validadeInicial, status: 'ativo' }
+                    { 
+                        usuario: updateUsuario, 
+                        senha: updateSenha, 
+                        validade: validadeInicial, 
+                        status: 'ativo',
+                        limite_dispositivos: limiteDispositivos
+                    }
                 ]);
 
             if (error) {
